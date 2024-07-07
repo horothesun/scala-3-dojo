@@ -33,15 +33,16 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
   }
 
   test("[❌ in 5s] parOrElse [✅ in 5s] will ✅ w/ secondary value in 5s") {
-    val secondary = IO.sleep(5.seconds).as("2️⃣")
-    val primary = secondary.as("1️⃣").flatTap(_ => boom)
+    val duration = 5.seconds
+    val primary = IO.sleep(duration).as("1️⃣").flatTap(_ => boom)
+    val secondary = IO.sleep(duration).as("2️⃣")
     val program = primary.parOrElse(secondary)
     TestControl.execute(program) flatMap { c =>
       for {
         _ <- c.results.assertEquals(None)
         _ <- c.tick
         t <- c.nextInterval
-        _ <- IO(assertEquals(t, 5.seconds))
+        _ <- IO(assertEquals(t, duration))
         _ <- c.advanceAndTick(t)
         _ <- c.results.assertEquals(Some(Succeeded("2️⃣")))
       } yield ()
@@ -50,11 +51,9 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
 
   test("[❌ in 3s] parOrElse([❌ in 1s], customError) will ❌ w/ customError in 3s") {
     val primary = IO.sleep(3.seconds).as("1️⃣").flatTap(_ => boom)
+    val secondary = IO.sleep(1.seconds).as("2️⃣").flatTap(_ => boom)
     val customError = Throwable("Custom both-KO error!")
-    val program = primary.parOrElse(
-      secondary = IO.sleep(1.seconds).as("2️⃣").flatTap(_ => boom),
-      customError
-    )
+    val program = primary.parOrElse(secondary, customError)
     TestControl.execute(program).flatMap { c =>
       for {
         _ <- c.results.assertEquals(None)
@@ -74,11 +73,9 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
 
   test("[❌ in 1s] parOrElse([❌ in 3s], customError) will ❌ w/ customError in 3s") {
     val primary = IO.sleep(1.seconds).as("1️⃣").flatTap(_ => boom)
+    val secondary = IO.sleep(3.seconds).as("2️⃣").flatTap(_ => boom)
     val customError = Throwable("Custom both-KO error!")
-    val program = primary.parOrElse(
-      secondary = IO.sleep(3.seconds).as("2️⃣").flatTap(_ => boom),
-      customError
-    )
+    val program = primary.parOrElse(secondary, customError)
     TestControl.execute(program).flatMap { c =>
       for {
         _ <- c.results.assertEquals(None)
@@ -97,18 +94,17 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
   }
 
   test("[❌ in 5s] parOrElse([❌ in 5s], customError) will ❌ w/ customError in 5s") {
-    val primary = IO.sleep(5.seconds).as("1️⃣").flatTap(_ => boom)
+    val duration = 5.seconds
+    val primary = IO.sleep(duration).as("1️⃣").flatTap(_ => boom)
+    val secondary = IO.sleep(duration).as("2️⃣").flatTap(_ => boom)
     val customError = Throwable("Custom both-KO error!")
-    val program = primary.parOrElse(
-      secondary = IO.sleep(5.seconds).as("2️⃣").flatTap(_ => boom),
-      customError
-    )
+    val program = primary.parOrElse(secondary, customError)
     TestControl.execute(program).flatMap { c =>
       for {
         _ <- c.results.assertEquals(None)
         _ <- c.tick
         t <- c.nextInterval
-        _ <- IO(assertEquals(t, 5.seconds))
+        _ <- IO(assertEquals(t, duration))
         _ <- c.advanceAndTick(t)
         _ <- c.results.assertEquals(Some(Errored(customError)))
       } yield ()
@@ -127,11 +123,7 @@ object IoParOrElseSuite:
 
   def ioAndDurationGen[R](result: R): Gen[(IO[R], FiniteDuration)] =
     Gen.oneOf(succeedingIoAndDurationGen(result), failingIoAndDurationGen)
-  def succeedingIoAndDurationGen[R](result: R): Gen[(IO[R], FiniteDuration)] = Gen.posNum[Int].map { i =>
-    val t = i.seconds
-    (IO.sleep(t).as(result), t)
-  }
-  def failingIoAndDurationGen[R]: Gen[(IO[R], FiniteDuration)] = Gen.posNum[Int].map { i =>
-    val t = i.seconds
-    (boom.delayBy(t), t)
-  }
+  def succeedingIoAndDurationGen[R](result: R): Gen[(IO[R], FiniteDuration)] =
+    posDurationGen.map(t => (IO.sleep(t).as(result), t))
+  def failingIoAndDurationGen[R]: Gen[(IO[R], FiniteDuration)] = posDurationGen.map(t => (boom.delayBy(t), t))
+  def posDurationGen: Gen[FiniteDuration] = Gen.posNum[Int].map(_.seconds)
