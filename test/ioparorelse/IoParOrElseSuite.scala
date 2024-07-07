@@ -12,13 +12,6 @@ import scala.concurrent.duration.*
 
 class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
 
-  property("[✅] parOrElse [✅ or ❌] will ✅ w/ primary value") {
-    forAll(succeedingIoGen(result = "1️⃣"), ioGen(result = "2️⃣")) { case (primary, secondary) =>
-      val program = primary.parOrElse(secondary)
-      assertEquals(TestControl.executeEmbed(program).unsafeRunSync(), "1️⃣")
-    }
-  }
-
   property("[✅ in Xs] parOrElse [✅ or ❌ in Ys] will ✅ w/ primary value in Xs") {
     val primaryResult = "1️⃣"
     forAll(succeedingIoAndDurationGen(primaryResult), ioGen(result = "2️⃣")) { case ((p, tp), s) =>
@@ -27,7 +20,7 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
     }
   }
 
-  property("[❌ in Xs] parOrElse [✅ in Ys] will ✅ w/ secondary value in max(X, Y)s") {
+  property("[❌ in Xs] parOrElse [✅ in Ys] will ✅ w/ secondary value in max(X,Y)s") {
     val secondaryResult = "2️⃣"
     forAll(failingIoAndDurationGen[String], succeedingIoAndDurationGen(secondaryResult)) { case ((p, tp), (s, ts)) =>
       val program = p.parOrElse(s).timed
@@ -39,39 +32,10 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
     }
   }
 
-  test("[✅ in 5s] parOrElse [✅ in 5s] will ✅ w/ primary value in 5s") {
-    val primary = IO.sleep(5.seconds).as("1️⃣")
-    val program = primary.parOrElse(secondary = IO.sleep(5.seconds).as("2️⃣"))
-    TestControl.execute(program).flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t <- c.nextInterval
-        _ <- IO(assertEquals(t, 5.seconds))
-        _ <- c.advanceAndTick(t)
-        _ <- c.results.assertEquals(Some(Succeeded("1️⃣")))
-      } yield ()
-    }
-  }
-
-  test("[✅ in 5s] parOrElse [❌ in 5s] will ✅ w/ primary value in 5s") {
-    val primary = IO.sleep(5.seconds).as("1️⃣")
-    val program = primary.parOrElse(secondary = IO.sleep(5.seconds).as("2️⃣").flatTap(_ => boom))
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t <- c.nextInterval
-        _ <- IO(assertEquals(t, 5.seconds))
-        _ <- c.advanceAndTick(t)
-        _ <- c.results.assertEquals(Some(Succeeded("1️⃣")))
-      } yield ()
-    }
-  }
-
   test("[❌ in 5s] parOrElse [✅ in 5s] will ✅ w/ secondary value in 5s") {
-    val primary = IO.sleep(5.seconds).as("1️⃣").flatTap(_ => boom)
-    val program = primary.parOrElse(secondary = IO.sleep(5.seconds).as("2️⃣"))
+    val secondary =  IO.sleep(5.seconds).as("2️⃣")
+    val primary = secondary.as("1️⃣").flatTap(_ => boom)
+    val program = primary.parOrElse(secondary)
     TestControl.execute(program) flatMap { c =>
       for {
         _ <- c.results.assertEquals(None)
@@ -79,135 +43,6 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
         t <- c.nextInterval
         _ <- IO(assertEquals(t, 5.seconds))
         _ <- c.advanceAndTick(t)
-        _ <- c.results.assertEquals(Some(Succeeded("2️⃣")))
-      } yield ()
-    }
-  }
-
-  test("[❌ in 5s] parOrElse([❌ in 5s], customError) will ❌ w/ customError in 5s") {
-    val primary = IO.sleep(5.seconds).as("1️⃣").flatTap(_ => boom)
-    val customError = Throwable("Custom both-KO error!")
-    val program = primary.parOrElse(
-      secondary = IO.sleep(5.seconds).as("2️⃣").flatTap(_ => boom),
-      customError
-    )
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t <- c.nextInterval
-        _ <- IO(assertEquals(t, 5.seconds))
-        _ <- c.advanceAndTick(t)
-        _ <- c.results.assertEquals(Some(Errored(customError)))
-      } yield ()
-    }
-  }
-
-  test("[✅ in 1s] parOrElse [✅ in 3s] will ✅ w/ primary value in 1s") {
-    val primary = IO.sleep(1.seconds).as("1️⃣")
-    val program = primary.parOrElse(secondary = IO.sleep(3.seconds).as("2️⃣"))
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t <- c.nextInterval
-        _ <- IO(assertEquals(t, 1.seconds))
-        _ <- c.advanceAndTick(t)
-        _ <- c.results.assertEquals(Some(Succeeded("1️⃣")))
-      } yield ()
-    }
-  }
-
-  test("[✅ in 1s] parOrElse [❌ in 3s] will ✅ w/ primary value in 1s") {
-    val primary = IO.sleep(1.seconds).as("1️⃣")
-    val program = primary.parOrElse(secondary = IO.sleep(3.seconds).as("2️⃣").flatTap(_ => boom))
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t <- c.nextInterval
-        _ <- IO(assertEquals(t, 1.seconds))
-        _ <- c.advanceAndTick(t)
-        _ <- c.results.assertEquals(Some(Succeeded("1️⃣")))
-      } yield ()
-    }
-  }
-
-  test("[✅ in 3s] parOrElse [✅ in 1s] will ✅ w/ primary value in 3s") {
-    val primary = IO.sleep(3.seconds).as("1️⃣")
-    val program = primary.parOrElse(secondary = IO.sleep(1.seconds).as("2️⃣"))
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t1 <- c.nextInterval
-        _ <- IO(assertEquals(t1, 1.seconds))
-        _ <- c.advanceAndTick(t1)
-        _ <- c.results.assertEquals(None)
-        t2 <- c.nextInterval
-        _ <- IO(assertEquals(t2, 2.seconds))
-        _ <- IO(assertEquals(t1 + t2, 3.seconds))
-        _ <- c.advanceAndTick(t2)
-        _ <- c.results.assertEquals(Some(Succeeded("1️⃣")))
-      } yield ()
-    }
-  }
-
-  test("[✅ in 3s] parOrElse [❌ in 1s] will ✅ w/ primary value in 3s") {
-    val primary = IO.sleep(3.seconds).as("1️⃣")
-    val program = primary.parOrElse(secondary = IO.sleep(1.seconds).as("2️⃣").flatTap(_ => boom))
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t1 <- c.nextInterval
-        _ <- IO(assertEquals(t1, 1.seconds))
-        _ <- c.advanceAndTick(t1)
-        _ <- c.results.assertEquals(None)
-        t2 <- c.nextInterval
-        _ <- IO(assertEquals(t2, 2.seconds))
-        _ <- IO(assertEquals(t1 + t2, 3.seconds))
-        _ <- c.advanceAndTick(t2)
-        _ <- c.results.assertEquals(Some(Succeeded("1️⃣")))
-      } yield ()
-    }
-  }
-
-  test("[❌ in 1s] parOrElse [✅ in 3s] will ✅ w/ secondary value in 3s") {
-    val primary = IO.sleep(1.seconds).as("1️⃣").flatTap(_ => boom)
-    val program = primary.parOrElse(secondary = IO.sleep(3.seconds).as("2️⃣"))
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t1 <- c.nextInterval
-        _ <- IO(assertEquals(t1, 1.seconds))
-        _ <- c.advanceAndTick(t1)
-        _ <- c.results.assertEquals(None)
-        t2 <- c.nextInterval
-        _ <- IO(assertEquals(t2, 2.seconds))
-        _ <- IO(assertEquals(t1 + t2, 3.seconds))
-        _ <- c.advanceAndTick(t2)
-        _ <- c.results.assertEquals(Some(Succeeded("2️⃣")))
-      } yield ()
-    }
-  }
-
-  test("[❌ in 3s] parOrElse [✅ in 1s] will ✅ w/ secondary value in 3s") {
-    val primary = IO.sleep(3.seconds).as("1️⃣").flatTap(_ => boom)
-    val program = primary.parOrElse(secondary = IO.sleep(1.seconds).as("2️⃣"))
-    TestControl.execute(program) flatMap { c =>
-      for {
-        _ <- c.results.assertEquals(None)
-        _ <- c.tick
-        t1 <- c.nextInterval
-        _ <- IO(assertEquals(t1, 1.seconds))
-        _ <- c.advanceAndTick(t1)
-        _ <- c.results.assertEquals(None)
-        t2 <- c.nextInterval
-        _ <- IO(assertEquals(t2, 2.seconds))
-        _ <- IO(assertEquals(t1 + t2, 3.seconds))
-        _ <- c.advanceAndTick(t2)
         _ <- c.results.assertEquals(Some(Succeeded("2️⃣")))
       } yield ()
     }
@@ -220,7 +55,7 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
       secondary = IO.sleep(1.seconds).as("2️⃣").flatTap(_ => boom),
       customError
     )
-    TestControl.execute(program) flatMap { c =>
+    TestControl.execute(program).flatMap { c =>
       for {
         _ <- c.results.assertEquals(None)
         _ <- c.tick
@@ -244,7 +79,7 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
       secondary = IO.sleep(3.seconds).as("2️⃣").flatTap(_ => boom),
       customError
     )
-    TestControl.execute(program) flatMap { c =>
+    TestControl.execute(program).flatMap { c =>
       for {
         _ <- c.results.assertEquals(None)
         _ <- c.tick
@@ -256,6 +91,25 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
         _ <- IO(assertEquals(t2, 2.seconds))
         _ <- IO(assertEquals(t1 + t2, 3.seconds))
         _ <- c.advanceAndTick(t2)
+        _ <- c.results.assertEquals(Some(Errored(customError)))
+      } yield ()
+    }
+  }
+
+  test("[❌ in 5s] parOrElse([❌ in 5s], customError) will ❌ w/ customError in 5s") {
+    val primary = IO.sleep(5.seconds).as("1️⃣").flatTap(_ => boom)
+    val customError = Throwable("Custom both-KO error!")
+    val program = primary.parOrElse(
+      secondary = IO.sleep(5.seconds).as("2️⃣").flatTap(_ => boom),
+      customError
+    )
+    TestControl.execute(program).flatMap { c =>
+      for {
+        _ <- c.results.assertEquals(None)
+        _ <- c.tick
+        t <- c.nextInterval
+        _ <- IO(assertEquals(t, 5.seconds))
+        _ <- c.advanceAndTick(t)
         _ <- c.results.assertEquals(Some(Errored(customError)))
       } yield ()
     }
