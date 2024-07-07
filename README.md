@@ -14,7 +14,7 @@ Scala-CLI - IntelliJ IDEA setup: [guide](https://scala-cli.virtuslab.org/docs/co
 Test only a single package with
 
 ```bash
-scala-cli test --watch . --test-only 'mypackage*'
+scala-cli test --watch . --test-only "mypackage*"
 ```
 
 ## Run
