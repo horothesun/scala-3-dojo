@@ -33,7 +33,7 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
   }
 
   test("[❌ in 5s] parOrElse [✅ in 5s] will ✅ w/ secondary value in 5s") {
-    val secondary =  IO.sleep(5.seconds).as("2️⃣")
+    val secondary = IO.sleep(5.seconds).as("2️⃣")
     val primary = secondary.as("1️⃣").flatTap(_ => boom)
     val program = primary.parOrElse(secondary)
     TestControl.execute(program) flatMap { c =>
