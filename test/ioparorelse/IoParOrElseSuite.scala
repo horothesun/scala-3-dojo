@@ -5,34 +5,30 @@ import IoParOrElseSuite.*
 import cats.effect.IO
 import cats.effect.kernel.Outcome.*
 import cats.effect.testkit.TestControl
-import munit.{CatsEffectSuite, ScalaCheckSuite}
+import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
 import org.scalacheck.Gen
-import org.scalacheck.Prop.*
+import org.scalacheck.effect.PropF
 import scala.concurrent.duration.*
 
-class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
+class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckEffectSuite:
 
-  property("[✅ in Xs] parOrElse [✅ or ❌ in Ys] will ✅ w/ primary value in Xs") {
+  test("[✅ in Xs] parOrElse [✅ or ❌ in Ys] will ✅ w/ primary value in Xs"):
     val primaryResult = "1️⃣"
-    forAll(succeedingIoAndDurationGen(primaryResult), ioGen(result = "2️⃣")) { case ((p, tp), s) =>
+    PropF.forAllF(succeedingIoAndDurationGen(primaryResult), ioGen(result = "2️⃣")) { case ((p, tp), s) =>
       val program = p.parOrElse(s).timed
-      assertEquals(TestControl.executeEmbed(program).unsafeRunSync(), (tp, primaryResult))
+      TestControl.executeEmbed(program).assertEquals((tp, primaryResult))
     }
-  }
 
-  property("[❌ in Xs] parOrElse [✅ in Ys] will ✅ w/ secondary value in max(X,Y)s") {
+  test("[❌ in Xs] parOrElse [✅ in Ys] will ✅ w/ secondary value in max(X,Y)s"):
     val secondaryResult = "2️⃣"
-    forAll(failingIoAndDurationGen[String], succeedingIoAndDurationGen(secondaryResult)) { case ((p, tp), (s, ts)) =>
-      val program = p.parOrElse(s).timed
-      val expectedDuration = Math.max(tp.toSeconds, ts.toSeconds).seconds
-      assertEquals(
-        TestControl.executeEmbed(program).unsafeRunSync(),
-        (expectedDuration, secondaryResult)
-      )
+    PropF.forAllF(failingIoAndDurationGen[String], succeedingIoAndDurationGen(secondaryResult)) {
+      case ((p, tp), (s, ts)) =>
+        val program = p.parOrElse(s).timed
+        val expectedDuration = Math.max(tp.toSeconds, ts.toSeconds).seconds
+        TestControl.executeEmbed(program).assertEquals((expectedDuration, secondaryResult))
     }
-  }
 
-  test("[❌ in 5s] parOrElse [✅ in 5s] will ✅ w/ secondary value in 5s") {
+  test("[❌ in 5s] parOrElse [✅ in 5s] will ✅ w/ secondary value in 5s"):
     val duration = 5.seconds
     val primary = IO.sleep(duration).as("1️⃣").flatTap(_ => boom)
     val secondary = IO.sleep(duration).as("2️⃣")
@@ -47,9 +43,8 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
         _ <- c.results.assertEquals(Some(Succeeded("2️⃣")))
       } yield ()
     }
-  }
 
-  test("[❌ in 3s] parOrElse([❌ in 1s], customError) will ❌ w/ customError in 3s") {
+  test("[❌ in 3s] parOrElse([❌ in 1s], customError) will ❌ w/ customError in 3s"):
     val primary = IO.sleep(3.seconds).as("1️⃣").flatTap(_ => boom)
     val secondary = IO.sleep(1.seconds).as("2️⃣").flatTap(_ => boom)
     val customError = Throwable("Custom both-KO error!")
@@ -69,9 +64,8 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
         _ <- c.results.assertEquals(Some(Errored(customError)))
       } yield ()
     }
-  }
 
-  test("[❌ in 1s] parOrElse([❌ in 3s], customError) will ❌ w/ customError in 3s") {
+  test("[❌ in 1s] parOrElse([❌ in 3s], customError) will ❌ w/ customError in 3s"):
     val primary = IO.sleep(1.seconds).as("1️⃣").flatTap(_ => boom)
     val secondary = IO.sleep(3.seconds).as("2️⃣").flatTap(_ => boom)
     val customError = Throwable("Custom both-KO error!")
@@ -91,9 +85,8 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
         _ <- c.results.assertEquals(Some(Errored(customError)))
       } yield ()
     }
-  }
 
-  test("[❌ in 5s] parOrElse([❌ in 5s], customError) will ❌ w/ customError in 5s") {
+  test("[❌ in 5s] parOrElse([❌ in 5s], customError) will ❌ w/ customError in 5s"):
     val duration = 5.seconds
     val primary = IO.sleep(duration).as("1️⃣").flatTap(_ => boom)
     val secondary = IO.sleep(duration).as("2️⃣").flatTap(_ => boom)
@@ -109,7 +102,6 @@ class IoParOrElseSuite extends CatsEffectSuite with ScalaCheckSuite:
         _ <- c.results.assertEquals(Some(Errored(customError)))
       } yield ()
     }
-  }
 
 object IoParOrElseSuite:
 

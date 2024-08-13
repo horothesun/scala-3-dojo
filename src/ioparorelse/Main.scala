@@ -2,7 +2,6 @@ package ioparorelse
 
 import ioparorelse.IoParOrElse.*
 import cats.effect.*
-import cats.implicits.*
 import scala.concurrent.duration.*
 
 object Main extends IOApp.Simple:
