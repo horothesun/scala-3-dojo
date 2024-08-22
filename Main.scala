@@ -1,4 +1,4 @@
-//> using scala 3.4.3
+//> using scala 3.5.0
 //> using jvm temurin:21
 
 //> using dep org.typelevel::cats-core:2.12.0
