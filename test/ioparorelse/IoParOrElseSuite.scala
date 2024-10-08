@@ -1,10 +1,10 @@
 package ioparorelse
 
-import ioparorelse.IoParOrElse.*
 import IoParOrElseSuite.*
 import cats.effect.IO
 import cats.effect.kernel.Outcome.*
 import cats.effect.testkit.TestControl
+import ioparorelse.IoParOrElse.*
 import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
