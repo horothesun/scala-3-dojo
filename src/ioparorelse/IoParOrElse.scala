@@ -9,7 +9,7 @@ object IoParOrElse:
     def parOrElse(secondary: IO[A], bothKo: Throwable = Throwable("Both IOs failed or got cancelled.")): IO[A] =
       IO.racePair(primary, secondary).flatMap {
         case Left((Succeeded(p), sf)) => p.flatTap(_ => sf.cancel)
-        case Left((_, sf)) =>
+        case Left((_, sf))            =>
           sf.join.flatMap {
             case Succeeded(s) => s
             case _            => IO.raiseError[A](bothKo)
@@ -17,7 +17,7 @@ object IoParOrElse:
         case Right((pf, so)) =>
           pf.join.flatMap {
             case Succeeded(p) => p
-            case _ =>
+            case _            =>
               so match
                 case Succeeded(s) => s
                 case _            => IO.raiseError[A](bothKo)
