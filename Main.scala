@@ -8,9 +8,9 @@
 //> using dep co.fs2::fs2-core:3.13.0
 //> using dep io.higherkindness::droste-core:0.10.0
 
-//> using test.dep org.scalameta::munit:1.3.0
+//> using test.dep org.scalameta::munit:1.3.1
 //> using test.dep org.typelevel::munit-cats-effect:2.2.0
-//> using test.dep org.scalameta::munit-scalacheck:1.3.0
+//> using test.dep org.scalameta::munit-scalacheck:1.3.1
 //> using test.dep org.scalacheck::scalacheck:1.19.0
 //> using test.dep org.typelevel::scalacheck-effect-munit:2.1.0
 //> using test.dep org.typelevel::cats-effect-testkit:3.7.0
